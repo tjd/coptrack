@@ -64,12 +64,18 @@ def draw_grid(grid):
 
 # Return a dictionary of the contents of the cells NSWE cells of grid[r][c].
 def ping(r, c, grid):
-    result = {}
-    result['N'] = ('wall',) if r == 0                else grid[r-1][c]
-    result['S'] = ('wall',) if r == len(grid) - 1    else grid[r+1][c]
-    result['W'] = ('wall',) if c == 0                else grid[r][c-1]
-    result['E'] = ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1]
-    return result
+    return {
+        'N' : ('wall',) if r == 0                else grid[r-1][c],
+        'S' : ('wall',) if r == len(grid) - 1    else grid[r+1][c],
+        'W' : ('wall',) if c == 0                else grid[r][c-1],
+        'E' : ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1],
+    }
+    # result = {}
+    # result['N'] = ('wall',) if r == 0                else grid[r-1][c]
+    # result['S'] = ('wall',) if r == len(grid) - 1    else grid[r+1][c]
+    # result['W'] = ('wall',) if c == 0                else grid[r][c-1]
+    # result['E'] = ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1]
+    # return result
 
 def test_moving():
     grid = make_grid(5, 5)
