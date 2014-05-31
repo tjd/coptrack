@@ -21,9 +21,14 @@ import random
 # 
 
 # contents for cells
-cell_values = ['empty', 'robber', 'wall'] 
-# if multiple cops are allowed:
-# cell_values = ['empty', 'cop', 'robber', 'wall']
+class Cell(object):
+    empty = 0
+    robber = 1
+    cop = 2
+    wall = 3
+    all_values = (empty, cop, wall)
+    to_char = {empty:'.', robber:'R', cop:'C', wall:'W'}
+    # add robber if multiple robbers allowed
 
 directions = 'NSWE'
 # if an agent can pass its move and stay in the same cell, then:
@@ -39,62 +44,72 @@ def make_allping_table(values):
 # dir_to_move value is chosen at random from directions, and makes sure
 # that it will not move into a wall.
 def make_rand_movement_table():
-    apt = make_allping_table(cell_values)
+    apt = make_allping_table(Cell.all_values)
     result = {}
-    for t in apt:
-        directions = [d for d in t if d != 'wall']
+    for n, s, e, w in apt:
+        directions = []
+        if n != Cell.wall: directions.append('N')
+        if s != Cell.wall: directions.append('S')
+        if e != Cell.wall: directions.append('E')
+        if w != Cell.wall: directions.append('W')
         rand_dir = () if directions == [] else random.choice(directions)
-        result[t] = rand_dir
+        result[(n, s, e, w)] = rand_dir
     return result
 
 # Returns a grid with r rows and c cols and all cells initially empty.
 def make_grid(r, c):
-    return [c * [()] for i in xrange(r)]
+    return [c * [Cell.empty] for i in xrange(r)]
 
 def draw_grid(grid):
     for row in grid:
-        for cell in row:
-            if len(cell) == 0:
-                print '. ',
-            elif len(cell) == 1:
-                print cell[0] + ' ',
-            else:
-                print '* ',
+        for c in row:
+            print Cell.to_char[c] + ' ',
         print
 
 # Return a dictionary of the contents of the cells NSWE cells of grid[r][c].
 def ping(r, c, grid):
-    return {
-        'N' : ('wall',) if r == 0                else grid[r-1][c],
-        'S' : ('wall',) if r == len(grid) - 1    else grid[r+1][c],
-        'W' : ('wall',) if c == 0                else grid[r][c-1],
-        'E' : ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1],
-    }
-    # result = {}
-    # result['N'] = ('wall',) if r == 0                else grid[r-1][c]
-    # result['S'] = ('wall',) if r == len(grid) - 1    else grid[r+1][c]
-    # result['W'] = ('wall',) if c == 0                else grid[r][c-1]
-    # result['E'] = ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1]
-    # return result
+    return (
+        Cell.wall if r == 0                else grid[r-1][c],
+        Cell.wall if r == len(grid) - 1    else grid[r+1][c],
+        Cell.wall if c == len(grid[0]) - 1 else grid[r][c+1],
+        Cell.wall if c == 0                else grid[r][c-1],
+    )
+    # return {
+    #     'N' : Cell.wall if r == 0                else grid[r-1][c],
+    #     'S' : Cell.wall if r == len(grid) - 1    else grid[r+1][c],
+    #     'E' : Cell.wall if c == len(grid[0]) - 1 else grid[r][c+1],
+    #     'W' : Cell.wall if c == 0                else grid[r][c-1],
+    # }
 
 def test_moving():
     grid = make_grid(5, 5)
+    grid[0][0] = Cell.cop
+    grid[4][4] = Cell.robber
+
     R = make_rand_movement_table()
+    print R
+    
+    draw_grid(grid)
+    p = ping(4, 4, grid)
+    print p
+    move = R[p]
+    print move
 
 if __name__ == '__main__':    
-    rmt = make_rand_movement_table()
-    print rmt
-    print rmt[('empty', 'empty', 'robber', 'wall')]
-    print
-    print len(rmt) # 81 for 3 cell values
+    test_moving()
+    # rmt = make_rand_movement_table()
+    # print rmt
+    # print rmt[(Cell.empty, Cell.empty, Cell.cop, Cell.wall)]
+    # print
+    # print len(rmt) # 81 for 3 cell values
 
-    grid = make_grid(5, 5)
-    draw_grid(grid)
-    print ping(0, 0, grid)
-    print ping(1, 1, grid)
+    # grid = make_grid(5, 5)
+    # draw_grid(grid)
+    # print ping(0, 0, grid)
+    # print ping(1, 1, grid)
 
-    grid[0][0] = ('C',)
-    grid[4][4] = ('R',)
-    draw_grid(grid)
-    print ping(0, 1, grid)
-    print ping(4, 3, grid)
+    # grid[0][0] = (Cell.cop)
+    # grid[4][4] = (Cell.robber)
+    # draw_grid(grid)
+    # print ping(0, 1, grid)
+    # print ping(4, 3, grid)
