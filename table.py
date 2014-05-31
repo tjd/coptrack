@@ -20,7 +20,7 @@ import random
 # the movement table. 
 # 
 
-# possible contents for cells
+# contents for cells
 cell_values = ['empty', 'robber', 'wall'] 
 # if multiple cops are allowed:
 # cell_values = ['empty', 'cop', 'robber', 'wall']
@@ -35,7 +35,7 @@ directions = 'NSWE'
 def make_allping_table(values):
     return [t for t in product(values, repeat=4)]
 
-# Returns a movement dictionary of ((N, S, E, W), dir_to_move) pairs. The
+# Returns a movement dictionary of (N, S, E, W):dir_to_move pairs. The
 # dir_to_move value is chosen at random from directions. Thus, a move might
 # try to move into a wall.
 def make_rand_movement_table():
@@ -43,8 +43,45 @@ def make_rand_movement_table():
     rand_dir = random.choice(directions)
     return {t:rand_dir for t in apt}
 
+# Returns a grid with r rows and c cols and all cell initially empty.
+def make_grid(r, c):
+    return [c * [()] for i in xrange(r)]
+
+def draw_grid(grid):
+    for row in grid:
+        for cell in row:
+            if len(cell) == 0:
+                print '. ',
+            elif len(cell) == 1:
+                print cell[0] + ' ',
+            else:
+                print '* ',
+        print
+
+
+# Return a dictionary of the contents of the cells NSWE cells of grid[r][c].
+def ping(r, c, grid):
+    result = {}
+    result['N'] = ('wall',) if r == 0                else grid[r-1][c]
+    result['S'] = ('wall',) if r == len(grid) - 1    else grid[r+1][c]
+    result['W'] = ('wall',) if c == 0                else grid[r][c-1]
+    result['E'] = ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1]
+    return result
+
 if __name__ == '__main__':    
     rmt = make_rand_movement_table()
     print rmt
     print rmt[('empty', 'empty', 'robber', 'wall')]
+    print
     print len(rmt) # 81 for 3 cell values
+
+    grid = make_grid(5, 5)
+    draw_grid(grid)
+    print ping(0, 0, grid)
+    print ping(1, 1, grid)
+
+    grid[0][0] = ('C',)
+    grid[4][4] = ('R',)
+    draw_grid(grid)
+    print ping(0, 1, grid)
+    print ping(4, 3, grid)
