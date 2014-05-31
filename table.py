@@ -36,14 +36,18 @@ def make_allping_table(values):
     return [t for t in product(values, repeat=4)]
 
 # Returns a movement dictionary of (N, S, E, W):dir_to_move pairs. The
-# dir_to_move value is chosen at random from directions. Thus, a move might
-# try to move into a wall.
+# dir_to_move value is chosen at random from directions, and makes sure
+# that it will not move into a wall.
 def make_rand_movement_table():
     apt = make_allping_table(cell_values)
-    rand_dir = random.choice(directions)
-    return {t:rand_dir for t in apt}
+    result = {}
+    for t in apt:
+        directions = [d for d in t if d != 'wall']
+        rand_dir = () if directions == [] else random.choice(directions)
+        result[t] = rand_dir
+    return result
 
-# Returns a grid with r rows and c cols and all cell initially empty.
+# Returns a grid with r rows and c cols and all cells initially empty.
 def make_grid(r, c):
     return [c * [()] for i in xrange(r)]
 
@@ -58,7 +62,6 @@ def draw_grid(grid):
                 print '* ',
         print
 
-
 # Return a dictionary of the contents of the cells NSWE cells of grid[r][c].
 def ping(r, c, grid):
     result = {}
@@ -67,6 +70,10 @@ def ping(r, c, grid):
     result['W'] = ('wall',) if c == 0                else grid[r][c-1]
     result['E'] = ('wall',) if c == len(grid[0]) - 1 else grid[r][c+1]
     return result
+
+def test_moving():
+    grid = make_grid(5, 5)
+    R = make_rand_movement_table()
 
 if __name__ == '__main__':    
     rmt = make_rand_movement_table()
