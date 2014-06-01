@@ -29,21 +29,75 @@ class Cell(object):
     all_values = (empty, cop, wall) # add robber if multiple robbers allowed
     to_char = {empty:'.', robber:'R', cop:'C', wall:'W'}
 
-directions = 'NSWE'
-# if an agent can pass its move and stay in the same cell, then:
-# directions = 'NSWEP'
+class Grid(object):
+    def __init__(self, r, c):
+        self.rows, self.cols = r, c
+        self.grid = [self.cols * [Cell.empty] for i in xrange(self.rows)]
+        self.cop_pos = None
+        self.robber_pos = None
 
-# Returns a list of all (N, S, E, W) 4-tuples of values. The order of the
-# values in the tuples matters, i.e. the first value is N, the second is S,
-# the third is E, and fourth is W.
-def make_allping_table(values):
-    return [t for t in product(values, repeat=4)]
+    def draw(self):
+        for row in self.grid:
+            for c in row:
+                print Cell.to_char[c] + ' ',
+            print
+
+    # Return an NSEW tuple of the contents of the cells neighboring
+    # grid[r][c].
+    def ping(self, (r, c)):
+        return (
+            Cell.wall if r == 0                     else self.grid[r-1][c], # N
+            Cell.wall if r == len(self.grid) - 1    else self.grid[r+1][c], # S
+            Cell.wall if c == len(self.grid[0]) - 1 else self.grid[r][c+1], # E
+            Cell.wall if c == 0                     else self.grid[r][c-1], # W
+        )
+
+    def set_empty(self, (r, c)):
+        self.grid[r][c] = Cell.empty
+
+    def set_cop(self, (r, c)):
+        self.grid[r][c] = Cell.cop
+        self.cop_pos = (r, c)
+
+    def set_robber(self, (r, c)):
+        self.grid[r][c] = Cell.robber
+        self.robber_pos = (r, c)
+
+    # d is the direction to move: N, S, E, or W
+    def move_cop(self, d):
+        r, c = self.cop_pos
+        self.grid[r][c] = Cell.empty
+        if d == 'N':
+            self.set_cop((r-1, c))
+        elif d == 'S':
+            self.set_cop((r+1, c))
+        elif d == 'E':
+            self.set_cop((r, c+1))
+        elif d == 'W':
+            self.set_cop((r, c-1))
+
+    # d is the direction to move: N, S, E, or W
+    def move_robber(self, d):
+        r, c = self.robber_pos
+        self.grid[r][c] = Cell.empty
+        if d == 'N':
+            self.set_robber((r-1, c))
+        elif d == 'S':
+            self.set_robber((r+1, c))
+        elif d == 'E':
+            self.set_robber((r, c+1))
+        elif d == 'W':
+            self.set_robber((r, c-1))
+
 
 # Returns a movement dictionary of (N, S, E, W):dir_to_move pairs. The
-# dir_to_move value is chosen at random from directions, and makes sure
-# that it will not move into a wall.
+# dir_to_move value is chosen at random from directions, and makes sure that
+# it will not move into a wall.
 def make_rand_movement_table():
-    apt = make_allping_table(Cell.all_values)
+    # apt is a list of all (N, S, E, W) 4-tuples of values. The order of the
+    # values in the tuples matters, i.e. the first value is N, the second is
+    # S, the third is E, and fourth is W.
+    apt = [t for t in product(Cell.all_values, repeat=4)]
     result = {}
     for n, s, e, w in apt:
         directions = []
@@ -55,79 +109,27 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-# Returns a grid with r rows and c cols and all cells initially empty.
-def make_grid(r, c):
-    return [c * [Cell.empty] for i in xrange(r)]
-
-def draw_grid(grid):
-    for row in grid:
-        for c in row:
-            print Cell.to_char[c] + ' ',
-        print
-
-# Return an NSEW tuple of the contents of the cells neighboring grid[r][c].
-def ping((r, c), grid):
-    return (
-        Cell.wall if r == 0                else grid[r-1][c], # N
-        Cell.wall if r == len(grid) - 1    else grid[r+1][c], # S
-        Cell.wall if c == len(grid[0]) - 1 else grid[r][c+1], # E
-        Cell.wall if c == 0                else grid[r][c-1], # W
-    )
-
-def set_cell((r, c), thing, grid):
-    grid[r][c] = thing
-
-# (r, c) is the cop's starting location
-def move_cop((r, c), direction, grid):
-    set_cell((r, c), Cell.empty, grid)
-    if direction == 'N':
-        set_cell((r-1, c), Cell.cop, grid)
-    elif direction == 'S':
-        set_cell((r+1, c), Cell.cop, grid)
-    elif direction == 'E':
-        set_cell((r, c+1), Cell.cop, grid)
-    elif direction == 'W':
-        set_cell((r, c-1), Cell.cop, grid)
-
-# (r, c) is the robber's starting location
-def move_robber((r, c), direction, grid):
-    set_cell((r, c), Cell.empty, grid)
-    if direction == 'N':
-        set_cell((r-1, c), Cell.robber, grid)
-        return (r-1, c)
-    elif direction == 'S':
-        set_cell((r+1, c), Cell.robber, grid)
-        return (r+1, c)
-    elif direction == 'E':
-        set_cell((r, c+1), Cell.robber, grid)
-        return (r, c+1)
-    elif direction == 'W':
-        set_cell((r, c-1), Cell.robber, grid)
-        return (r, c-1)
-
 
 def test_moving():
-    grid = make_grid(5, 5)
+    grid = Grid(5, 5)
 
     # starting positions
-    cop_pos = (0, 0)
-    robber_pos = (4, 4)
-    set_cell(cop_pos, Cell.cop, grid)
-    set_cell(robber_pos, Cell.robber, grid)
+    grid.set_cop((0, 0))
+    grid.set_robber((4, 4))
 
     move_table = make_rand_movement_table()
     print move_table
     
-    draw_grid(grid)
-    p = ping(robber_pos, grid)
+    grid.draw()
+    p = grid.ping((4, 4))
     print p
     move = move_table[p]
     print 'Robber moves', move
     print
-    robber_pos = move_robber(robber_pos, move, grid)
+    grid.move_robber(move)
 
-    draw_grid(grid)
-    print robber_pos
+    grid.draw()
+    print grid.robber_pos
 
 
 if __name__ == '__main__':    
