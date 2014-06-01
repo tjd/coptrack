@@ -34,7 +34,9 @@ class Grid(object):
         self.rows, self.cols = r, c
         self.grid = [self.cols * [Cell.empty] for i in xrange(self.rows)]
         self.cop_pos = None
+        self.cop_log = []
         self.robber_pos = None
+        self.robber_log = []
 
     def draw(self):
         for row in self.grid:
@@ -52,6 +54,9 @@ class Grid(object):
             Cell.wall if c == 0                     else self.grid[r][c-1], # W
         )
 
+    def ping_robber(self): return self.ping(self.robber_pos)
+    def ping_cop(self): return self.ping(self.cop_pos)
+
     def set_empty(self, (r, c)):
         self.grid[r][c] = Cell.empty
 
@@ -66,6 +71,7 @@ class Grid(object):
     # d is the direction to move: N, S, E, or W
     def move_cop(self, d):
         r, c = self.cop_pos
+        self.cop_log.append(d)
         self.grid[r][c] = Cell.empty
         if d == 'N':
             self.set_cop((r-1, c))
@@ -79,6 +85,7 @@ class Grid(object):
     # d is the direction to move: N, S, E, or W
     def move_robber(self, d):
         r, c = self.robber_pos
+        self.robber_log.append(d)
         self.grid[r][c] = Cell.empty
         if d == 'N':
             self.set_robber((r-1, c))
@@ -109,7 +116,6 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-
 def test_moving():
     grid = Grid(5, 5)
 
@@ -117,11 +123,13 @@ def test_moving():
     grid.set_cop((0, 0))
     grid.set_robber((4, 4))
 
+    # create a random movement table for the robber
     move_table = make_rand_movement_table()
-    print move_table
     
+    # print move_table
     grid.draw()
-    p = grid.ping((4, 4))
+    
+    p = grid.ping_robber()
     print p
     move = move_table[p]
     print 'Robber moves', move
