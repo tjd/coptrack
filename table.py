@@ -116,7 +116,7 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-def test_moving():
+def test1():
     grid = Grid(5, 5)
 
     # starting positions
@@ -139,6 +139,31 @@ def test_moving():
     grid.draw()
     print grid.robber_pos
 
+def test2():
+    grid = Grid(5, 5)
+
+    # starting positions
+    grid.set_cop((3, 3))
+    grid.set_robber((4, 4))
+
+    # create a random movement table for the robber
+    robber_move_table = make_rand_movement_table()
+
+    # make 100 moves
+    for i in xrange(100):
+        grid.draw()
+        print 'i =', i
+
+        p = grid.ping_robber()
+        move = robber_move_table[p]
+
+        grid.move_robber(move)
+        print p
+        print 'Robber moves %s\n' % move
+
+    print grid.robber_log
+
 
 if __name__ == '__main__':    
-    test_moving()
+    # test1()
+    test2()
