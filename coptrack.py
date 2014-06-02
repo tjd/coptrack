@@ -5,26 +5,39 @@ import random
 # A cop C and robber R move around a graph. They start at random cells (?) and
 # then alternate taking turns, with R moving first (or C?).
 #
-# On each turn, the agent whose turn it is moves into one of the four adjacent
-# non-wall cells. These adjacent cells are referred to as N, S, E, and W. If
-# it tries to move into a wall cell, then nothing happens and it stays where
-# it is.
+# In the case with only one C and one R, both C and R are limited to knowing
+# the contents of their current cell (i.e. the one they are on), and the 4
+# orthogonally adjacent cells (north, south, east, and west). They cannot
+# "see" past these cells, although they can, of course, store the results of
+# any of their sensing actions.
 #
-# C is casing R, i.e. following R and trying to determine its movement
-# pattern. R's moves are specified by a movement table, which is a table of
-# possible 4-tuples of sensors readings around a cell. One move is given for
-# each possible 4-tuple, and so R makes a move by look-up the corresponding
-# move for the sensor 4-tuple. 
+# The things that can be sensed are an empty cell, a wall (i.e a non-empty
+# cell), a robber, and a cop.
 #
-# One C believes it has determine R's movement table, it can stop announce
-# the movement table. 
+# R is assumed to be following a set of movement rules. There is no set
+# limitation to the rules R might be following. R could even be controlled by
+# a human player.
+#
+# C's goal is to figure out R's rules, or an approximation thereof. C could
+# prove it knows R's rules by predicting R's next move for a long sequence.
+#
+# The challenge is to come up with an algorithm that C can use to efficiently
+# determine R's movement pattern.
 # 
+# A key detail here is that the cop moves around the grid at the same time the
+# robber does, and R's movements can be influenced by C. Possibly, C could
+# somehow use this fact to its advantage.
+#
 
 def opposite_dir(d):
-    if d not in 'NEWS':
-        return d
-    else:
+    try:
         return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
+    except KeyError:
+        return d
+    # if d not in 'NEWS':
+    #     return d
+    # else:
+    #     return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
 
 # contents for cells
 class Cell(object):
