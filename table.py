@@ -165,55 +165,79 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-# def test1():
-#     grid = Grid(5, 5)
+def unigrams(seq):
+    result = {}
+    for x in seq:
+        if x in result:
+            result[x] += 1
+        else:
+            result[x] = 1
+    return result
 
-#     # starting positions
-#     grid.set_cop((0, 0))
-#     grid.set_robber((4, 4))
+def bigrams(seq):
+    result = {}
+    for i in xrange(1, len(seq)):
+        t = (seq[i-1], seq[i])
+        if t in result:
+            result[t] += 1
+        else:
+            result[t] = 1
+    return result
 
-#     # create a random movement table for the robber
-#     # move_table = make_rand_movement_table()
-    
-#     # print move_table
-#     grid.draw()
-    
-#     p = grid.ping_robber()
-#     print p
-#     move = grid.robber.move_table[p]
-#     print 'Robber moves', move
-#     print
-#     grid.move_robber(move)
+def trigrams(seq):
+    result = {}
+    for i in xrange(2, len(seq)):
+        t = (seq[i-2], seq[i-1], seq[i])
+        if t in result:
+            result[t] += 1
+        else:
+            result[t] = 1
+    return result
 
-#     grid.draw()
-#     print grid.robber_pos
+def ngrams(seq, n):
+    result = {}
+    for i in xrange(n-1, len(seq)):
+        t = tuple(seq[j] for j in xrange(i - n + 1, i + 1))
+        if t in result:
+            result[t] += 1
+        else:
+            result[t] = 1
+    return result
 
-def test2():
+def print_sorted_ngrams(ngrams):
+    lst = [(ngrams[ng], ng) for ng in ngrams]
+    lst.sort()
+    lst.reverse()
+    for count, ng in lst:
+        print '%s %s' % (''.join(ng), count)
+
+def test():
     grid = Grid(5, 5)
 
     # starting positions
     grid.set_cop((3, 3))
     grid.set_robber((4, 4))
 
-    # create a random movement table for the robber
-    #robber_move_table = make_rand_movement_table()
-
     # make 100 moves
     for i in xrange(100):
         grid.draw()
         print 'i =', i
 
-        # p = grid.ping_robber()
-        # move = grid.robber.move_table[p]
-
-        # grid.move_robber(move)
-        # print p
         grid.do_robber_move()
         print 'Robber moves %s\n' % grid.robber.last_move()
 
     print grid.robber.log
-
+    # print unigrams(grid.robber.log)
+    # print bigrams(grid.robber.log)
+    # print trigrams(grid.robber.log)
+    # print ngrams(grid.robber.log, 3)
+    print_sorted_ngrams(ngrams(grid.robber.log, 3))
+    print
+    print_sorted_ngrams(ngrams(grid.robber.log, 4))
+    print
+    print_sorted_ngrams(ngrams(grid.robber.log, 5))
+    print
+    print_sorted_ngrams(ngrams(grid.robber.log, 6))
 
 if __name__ == '__main__':    
-    # test1()
-    test2()
+    test()
