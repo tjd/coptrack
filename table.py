@@ -20,6 +20,12 @@ import random
 # the movement table. 
 # 
 
+def opposite_dir(d):
+    if d not in 'NEWS':
+        return d
+    else:
+        return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
+
 # contents for cells
 class Cell(object):
     empty = 0
@@ -29,14 +35,43 @@ class Cell(object):
     all_values = (empty, cop, wall) # add robber if multiple robbers allowed
     to_char = {empty:'.', robber:'R', cop:'C', wall:'W'}
 
+class Agent(object):
+    def __init__(self, name):
+        self.name = name
+        self.pos = None
+        self.log = ['start']
+
+    def last_move(self): return self.log[-1]
+    def get_move(self, ping): pass
+
+class RandomTableAgent(Agent):
+    def __init__(self, name):
+        super(RandomTableAgent, self).__init__(name)
+        self.move_table = make_rand_movement_table()
+
+    def get_move(self, ping):
+        return self.move_table[ping]
+
+class RandomOrderedAgent(Agent):
+    def __init__(self, name):
+        super(RandomOrderedAgent, self).__init__(name)
+        self.dirs = list('NSEW')
+        random.shuffle(self.dirs)
+
+    # TODO: fix order
+    def get_move(self, ping):
+        for d in self.dirs:
+            if ping[d] == Cell.empty and d != opposite_dir(self.last_move()):
+                return d
+        assert False, 'no move'
+
 class Grid(object):
     def __init__(self, r, c):
         self.rows, self.cols = r, c
         self.grid = [self.cols * [Cell.empty] for i in xrange(self.rows)]
-        self.cop_pos = None
-        self.cop_log = []
-        self.robber_pos = None
-        self.robber_log = []
+        self.cop = Agent('Cop')
+        self.robber = RandomOrderedAgent('Robber')
+        # self.robber = RandomTableAgent('Robber')
 
     def draw(self):
         for row in self.grid:
@@ -47,31 +82,43 @@ class Grid(object):
     # Return an NSEW tuple of the contents of the cells neighboring
     # grid[r][c].
     def ping(self, (r, c)):
-        return (
-            Cell.wall if r == 0                     else self.grid[r-1][c], # N
-            Cell.wall if r == len(self.grid) - 1    else self.grid[r+1][c], # S
-            Cell.wall if c == len(self.grid[0]) - 1 else self.grid[r][c+1], # E
-            Cell.wall if c == 0                     else self.grid[r][c-1], # W
-        )
+        return {
+          'N':Cell.wall if r == 0                     else self.grid[r-1][c],
+          'S':Cell.wall if r == len(self.grid) - 1    else self.grid[r+1][c],
+          'E':Cell.wall if c == len(self.grid[0]) - 1 else self.grid[r][c+1],
+          'W':Cell.wall if c == 0                     else self.grid[r][c-1],
+        }
 
-    def ping_robber(self): return self.ping(self.robber_pos)
-    def ping_cop(self): return self.ping(self.cop_pos)
+    def ping_robber(self): return self.ping(self.robber.pos)
+    def ping_cop(self): return self.ping(self.cop.pos)
 
     def set_empty(self, (r, c)):
         self.grid[r][c] = Cell.empty
 
     def set_cop(self, (r, c)):
         self.grid[r][c] = Cell.cop
-        self.cop_pos = (r, c)
+        self.cop.pos = (r, c)
 
     def set_robber(self, (r, c)):
         self.grid[r][c] = Cell.robber
-        self.robber_pos = (r, c)
+        self.robber.pos = (r, c)
+
+    def do_cop_move(self):
+        p = self.ping_cop()
+        move = self.cop.get_move(p)
+        self.move_cop(move)
+
+    def do_robber_move(self):
+        p = self.ping_robber()
+        print 'ping', p
+        move = self.robber.get_move(p)
+        print 'move', move
+        self.move_robber(move)
 
     # d is the direction to move: N, S, E, or W
     def move_cop(self, d):
-        r, c = self.cop_pos
-        self.cop_log.append(d)
+        r, c = self.cop.pos
+        self.cop.log.append(d)
         self.grid[r][c] = Cell.empty
         if d == 'N':
             self.set_cop((r-1, c))
@@ -84,8 +131,10 @@ class Grid(object):
 
     # d is the direction to move: N, S, E, or W
     def move_robber(self, d):
-        r, c = self.robber_pos
-        self.robber_log.append(d)
+        r, c = self.robber.pos
+        print 'd', d
+        print '%s, %s' % (r, c)
+        self.robber.log.append(d)
         self.grid[r][c] = Cell.empty
         if d == 'N':
             self.set_robber((r-1, c))
@@ -116,28 +165,28 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-def test1():
-    grid = Grid(5, 5)
+# def test1():
+#     grid = Grid(5, 5)
 
-    # starting positions
-    grid.set_cop((0, 0))
-    grid.set_robber((4, 4))
+#     # starting positions
+#     grid.set_cop((0, 0))
+#     grid.set_robber((4, 4))
 
-    # create a random movement table for the robber
-    move_table = make_rand_movement_table()
+#     # create a random movement table for the robber
+#     # move_table = make_rand_movement_table()
     
-    # print move_table
-    grid.draw()
+#     # print move_table
+#     grid.draw()
     
-    p = grid.ping_robber()
-    print p
-    move = move_table[p]
-    print 'Robber moves', move
-    print
-    grid.move_robber(move)
+#     p = grid.ping_robber()
+#     print p
+#     move = grid.robber.move_table[p]
+#     print 'Robber moves', move
+#     print
+#     grid.move_robber(move)
 
-    grid.draw()
-    print grid.robber_pos
+#     grid.draw()
+#     print grid.robber_pos
 
 def test2():
     grid = Grid(5, 5)
@@ -147,21 +196,22 @@ def test2():
     grid.set_robber((4, 4))
 
     # create a random movement table for the robber
-    robber_move_table = make_rand_movement_table()
+    #robber_move_table = make_rand_movement_table()
 
     # make 100 moves
     for i in xrange(100):
         grid.draw()
         print 'i =', i
 
-        p = grid.ping_robber()
-        move = robber_move_table[p]
+        # p = grid.ping_robber()
+        # move = grid.robber.move_table[p]
 
-        grid.move_robber(move)
-        print p
-        print 'Robber moves %s\n' % move
+        # grid.move_robber(move)
+        # print p
+        grid.do_robber_move()
+        print 'Robber moves %s\n' % grid.robber.last_move()
 
-    print grid.robber_log
+    print grid.robber.log
 
 
 if __name__ == '__main__':    
