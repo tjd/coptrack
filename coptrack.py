@@ -139,13 +139,17 @@ class RandomOrderedAgent(Agent):
                 return d
         assert False, 'no move'
 
+class FixedOrderedAgent(RandomOrderedAgent):
+    def __init__(self, name, dirs):
+        super(FixedOrderedAgent, self).__init__(name)
+        self.dirs = list(dirs)
+
 class Grid(object):
     def __init__(self, r, c):
         self.rows, self.cols = r, c
         self.grid = [self.cols * [Cell.empty] for i in xrange(self.rows)]
         self.cop = Detective('Cop')
         self.robber = RandomOrderedAgent('Robber')
-        #self.robber = RandomTableAgent('Robber')
 
     def draw(self):
         for row in self.grid:
@@ -228,6 +232,11 @@ class Grid(object):
         elif d == 'W':
             self.set_robber((r, c-1))
 
+    def make_detective(self):
+        self.cop = Detective('Detective')
+
+    def make_fixed_ordered_robber(self, dirs):
+        self.robber = FixedOrderedAgent('FO-Robber', dirs)
 
 # Returns a movement dictionary of (N, S, E, W):dir_to_move pairs. The
 # dir_to_move value is chosen at random from directions, and makes sure that
@@ -304,6 +313,32 @@ def ngrams(seq, n):
             result[t] = 1
     return result
 
+# Compute the ngram total for a sequence of 'sentences':
+def cummulative_ngrams(seq, n):
+    result = {}
+    for i in seq:
+        rtotal = ngrams(i, n)
+
+        for key, value in rtotal.iteritems():
+            if key in result.keys():
+                result[key] += value
+            else:
+                result[key] = value
+    return result
+
+# corpus: our sample data, n: length of our ngram.
+# Given n = 3, we are computing max-likelihood-estimate
+# of 3rd word given the 2 preceding words.
+def compute_model_n(corpus, n):
+    agent_model = {}
+    prefix = cummulative_ngrams(corpus, n-1)
+    whole = cummulative_ngrams(corpus, n)
+
+    for phrase in whole.keys():
+        prob = whole[phrase] / float(prefix[phrase[:-1]])
+        agent_model[phrase] = prob
+    return agent_model
+
 def print_sorted_ngrams(ngrams):
     lst = [(ngrams[ng], ng) for ng in ngrams]
     lst.sort()
@@ -311,16 +346,57 @@ def print_sorted_ngrams(ngrams):
     for count, ng in lst:
         print '%s %s' % (''.join(ng), count)
 
+def record_fixed_agent(r, c, dirs, start):
+    grid = Grid(r, c)
+    grid.make_fixed_ordered_robber(dirs)
+    grid.set_robber(start)
+
+    # make 100 moves
+    for i in xrange(100):
+        grid.do_robber_move()
+    grid.robber.log.append('end')
+    return grid.robber.log
+
+def generate_fixed_order_agent_corpus(r, c, dirs):
+    corpus = []
+    for i in xrange(r):
+        for j in xrange(c):
+            corpus.append(record_fixed_agent(r, c, dirs, (i,j)) )
+    return corpus
+
+def process_agent_corpus(corpus):
+    print_sorted_ngrams(ngrams(corpus[0], 3))
+
+def generate_fixed_agent_model():
+    corpus = generate_fixed_order_agent_corpus(5,5, 'SNWE')
+    
+    model_onegrams = compute_model_n(corpus, 1)
+    print 'onegram\t\tProbability'
+    print '------------------------------------'
+    for k, v in model_onegrams.iteritems():
+        print k, '\t\t',v
+    print
+
+    model_bigrams = compute_model_n(corpus, 2)
+    print 'bigram\t\tProbability'
+    print '------------------------------------'
+    for k, v in model_bigrams.iteritems():
+        print k, '\t',v
+
+
+
+
+
 def test():
     grid = Grid(5, 5)
 
     # starting positions
-    grid.set_cop((4, 4))
+    grid.set_cop((2, 4))
     grid.set_robber((4, 4))
     grid.cop.observe(grid.ping_cop())
 
     # make 100 moves
-    for i in xrange(10):
+    for i in xrange(100):
         
         print 'i =', i
         grid.draw()
@@ -337,6 +413,7 @@ def test():
         print
 
     grid.cop.deduce_action()
+
     print 'cop observed: ', grid.cop.observations
     print 'cop deduced: ', grid.cop.target_actions
     print 'robber log: ', grid.robber.log
@@ -348,12 +425,14 @@ def test():
     # print trigrams(grid.robber.log)
     # print ngrams(grid.robber.log, 3)
     #print_sorted_ngrams(ngrams(grid.robber.log, 3))
+    print 'Robber directions: ', grid.robber.dirs
+    print_sorted_ngrams(ngrams(grid.cop.target_actions, 4))
     print
-    #print_sorted_ngrams(ngrams(grid.robber.log, 4))
-    print
+    print_sorted_ngrams(ngrams(grid.robber.log, 4))
+    #print
     #print_sorted_ngrams(ngrams(grid.robber.log, 5))
-    print
+    #print
     #print_sorted_ngrams(ngrams(grid.robber.log, 6))
 
 if __name__ == '__main__':    
-    test()
+    generate_fixed_agent_model()
