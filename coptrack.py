@@ -42,7 +42,7 @@ def opposite_dir(d):
 
 def vector_dir(d):
     try:
-        return {(0,0):(), (+1,0):'N', (-1,0):'S', (0,-1):'E', (0,1):'W'}[d]
+        return {(0,0):(), (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
     except KeyError:
         return d
 
@@ -89,13 +89,12 @@ class Detective(RandomTableAgent):
             ping['N'],
             ping['S'],
             ping['E'],
-            ping['W']
+            ping['W'],
+            ping['C']
             )]
 
     def observe(self, ping):
-        print 'cops observations: ', ping
         if Cell.robber in ping.values():
-            print 'observed a robber'
             if ping['N'] == Cell.robber:
                 self.observations.append((self.pos[0] - 1, self.pos[1]))
 
@@ -107,6 +106,9 @@ class Detective(RandomTableAgent):
 
             elif ping['W'] == Cell.robber:
                 self.observations.append((self.pos[0], self.pos[1] - 1))
+
+            elif ping['C'] == Cell.robber:
+                self.observations.append(self.pos)
         else:
             self.observations.append(())
 
@@ -114,8 +116,9 @@ class Detective(RandomTableAgent):
         for i in xrange(1, len(self.observations)):
             a, b = self.observations[i-1], self.observations[i]
             if a != () and b != ():
-                v = (abs(a[0] - b[0]), abs(a[1] - b[1]))
-                if v[0] + v[1] < 2 and v[0] < 2 and v[1] < 2:
+                v = (b[0] - a[0]), (b[1] - a[1])
+                l = reduce(lambda x, y: abs(x)+abs(y), v)
+                if l < 2 and abs(v[0]) < 2 and abs(v[1]) < 2:
                     self.target_actions.append(vector_dir(v))
                 else:
                     pass
@@ -158,6 +161,7 @@ class Grid(object):
           'S':Cell.wall if r == len(self.grid) - 1    else self.grid[r+1][c],
           'E':Cell.wall if c == len(self.grid[0]) - 1 else self.grid[r][c+1],
           'W':Cell.wall if c == 0                     else self.grid[r][c-1],
+          'C': self.grid[r][c]
         }
 
     def ping_robber(self): return self.ping(self.robber.pos)
@@ -167,7 +171,9 @@ class Grid(object):
         self.grid[r][c] = Cell.empty
 
     def set_cop(self, (r, c)):
-        self.grid[r][c] = Cell.cop
+        # Robbers have precedence:
+        if self.grid[r][c] != Cell.robber:
+            self.grid[r][c] = Cell.cop
         self.cop.pos = (r, c)
 
     def set_robber(self, (r, c)):
@@ -201,6 +207,8 @@ class Grid(object):
             self.set_cop((r, c+1))
         elif d == 'W':
             self.set_cop((r, c-1))
+        elif d == 'R' or d == ():
+            self.set_cop((r,c))
 
     # d is the direction to move: N, S, E, or W
     def move_robber(self, d):
@@ -240,20 +248,21 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-# Returns a movement dictionary of (N, S, E, W, R):dir_to_move pairs. The
+# Returns a movement dictionary of (N, S, E, W, C):dir_to_move pairs. The
 # dir_to_move value is chosen from available directions leading to
-# robbers. R rests for the current turn.
+# robbers.
 def make_rand_stalker_movement_table():
-    apt = [t for t in product(Cell.all_values, repeat=4)]
+    apt = [t for t in product(Cell.all_values, repeat=5)]
     result = {}
-    for n, s, e, w in apt:
+    for n, s, e, w, c in apt:
         directions = []
         if n == Cell.robber: directions.append('N')
         if s == Cell.robber: directions.append('S')
         if e == Cell.robber: directions.append('E')
         if w == Cell.robber: directions.append('W')
+        if c == Cell.robber: directions.append('R')
         rand_dir = () if directions == [] else random.choice(directions)
-        result[(n, s, e, w)] = rand_dir
+        result[(n, s, e, w, c)] = rand_dir
     return result
 
 def unigrams(seq):
@@ -306,32 +315,31 @@ def test():
     grid = Grid(5, 5)
 
     # starting positions
-    grid.set_cop((3, 3))
+    grid.set_cop((4, 4))
     grid.set_robber((4, 4))
+    grid.cop.observe(grid.ping_cop())
 
     # make 100 moves
-    for i in xrange(5):
+    for i in xrange(10):
         
         print 'i =', i
         grid.draw()
-        print 'Robber: ', grid.robber.pos
-        print 'Cop: ', grid.cop.pos
+        #print 'Robber: ', grid.robber.pos
+        #print 'Cop: ', grid.cop.pos
         grid.do_robber_move()
         
         print 'Robber moved %s\n' % grid.robber.last_move()
         grid.draw()
         grid.cop.observe(grid.ping_cop())
 
-
-        print 'Robber: ', grid.robber.pos
-        print 'Cop: ', grid.cop.pos
         grid.do_cop_move()
-        print 'Cop moves %s\n' % grid.cop.last_move()
+        print 'Cop moves ', grid.cop.last_move()
         print
 
     grid.cop.deduce_action()
     print 'cop observed: ', grid.cop.observations
     print 'cop deduced: ', grid.cop.target_actions
+    print 'robber log: ', grid.robber.log
         
     #print grid.robber.move_table
     #print grid.robber.log
