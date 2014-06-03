@@ -42,7 +42,7 @@ def opposite_dir(d):
 
 def vector_dir(d):
     try:
-        return {(0,0):(), (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
+        return {(0,0):(), (+1,0):'N', (-1,0):'S', (0,-1):'E', (0,1):'W'}[d]
     except KeyError:
         return d
 
