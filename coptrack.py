@@ -39,13 +39,20 @@ def opposite_dir(d):
     # else:
     #     return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
 
+
+def vector_dir(d):
+    try:
+        return {(0,0):(), (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
+    except KeyError:
+        return d
+
 # contents for cells
 class Cell(object):
     empty = 0
     robber = 1
     cop = 2
     wall = 3
-    all_values = (empty, cop, wall) # add robber if multiple robbers allowed
+    all_values = (empty, robber, cop, wall) # add robber if multiple robbers allowed
     to_char = {empty:'.', robber:'R', cop:'C', wall:'W'}
 
 class Agent(object):
@@ -63,7 +70,58 @@ class RandomTableAgent(Agent):
         self.move_table = make_rand_movement_table()
 
     def get_move(self, ping):
-        return self.move_table[ping]
+        return self.move_table[(
+            ping['N'],
+            ping['S'],
+            ping['E'],
+            ping['W']
+            )]
+
+class Detective(RandomTableAgent):
+    def __init__(self, name):
+        super(Detective, self).__init__(name)
+        self.move_table = make_rand_stalker_movement_table()
+        self.observations = []
+        self.target_actions = []
+
+    def get_move(self, ping):
+        return self.move_table[(
+            ping['N'],
+            ping['S'],
+            ping['E'],
+            ping['W']
+            )]
+
+    def observe(self, ping):
+        print 'cops observations: ', ping
+        if Cell.robber in ping.values():
+            print 'observed a robber'
+            if ping['N'] == Cell.robber:
+                self.observations.append((self.pos[0] - 1, self.pos[1]))
+
+            elif ping['S'] == Cell.robber:
+                self.observations.append((self.pos[0] +1, self.pos[1]))
+
+            elif ping['E'] == Cell.robber:
+                self.observations.append((self.pos[0], self.pos[1] + 1))
+
+            elif ping['W'] == Cell.robber:
+                self.observations.append((self.pos[0], self.pos[1] - 1))
+        else:
+            self.observations.append(())
+
+    def deduce_action(self):
+        for i in xrange(1, len(self.observations)):
+            a, b = self.observations[i-1], self.observations[i]
+            if a != () and b != ():
+                v = (abs(a[0] - b[0]), abs(a[1] - b[1]))
+                if v[0] + v[1] < 2 and v[0] < 2 and v[1] < 2:
+                    self.target_actions.append(vector_dir(v))
+                else:
+                    pass
+                    # TODO: Impossible move happened.
+            else:
+                self.target_actions.append('?')
 
 class RandomOrderedAgent(Agent):
     def __init__(self, name):
@@ -82,9 +140,9 @@ class Grid(object):
     def __init__(self, r, c):
         self.rows, self.cols = r, c
         self.grid = [self.cols * [Cell.empty] for i in xrange(self.rows)]
-        self.cop = Agent('Cop')
+        self.cop = Detective('Cop')
         self.robber = RandomOrderedAgent('Robber')
-        # self.robber = RandomTableAgent('Robber')
+        #self.robber = RandomTableAgent('Robber')
 
     def draw(self):
         for row in self.grid:
@@ -123,16 +181,18 @@ class Grid(object):
 
     def do_robber_move(self):
         p = self.ping_robber()
-        print 'ping', p
         move = self.robber.get_move(p)
-        print 'move', move
         self.move_robber(move)
 
     # d is the direction to move: N, S, E, or W
     def move_cop(self, d):
         r, c = self.cop.pos
         self.cop.log.append(d)
-        self.grid[r][c] = Cell.empty
+        if (r,c) != self.robber.pos:
+            self.grid[r][c] = Cell.empty
+        else:
+            self.grid[r][c] = Cell.robber
+
         if d == 'N':
             self.set_cop((r-1, c))
         elif d == 'S':
@@ -145,10 +205,12 @@ class Grid(object):
     # d is the direction to move: N, S, E, or W
     def move_robber(self, d):
         r, c = self.robber.pos
-        print 'd', d
-        print '%s, %s' % (r, c)
         self.robber.log.append(d)
-        self.grid[r][c] = Cell.empty
+        if (r,c) != self.cop.pos:
+            self.grid[r][c] = Cell.empty
+        else:
+            self.grid[r][c] = Cell.cop
+
         if d == 'N':
             self.set_robber((r-1, c))
         elif d == 'S':
@@ -174,6 +236,22 @@ def make_rand_movement_table():
         if s != Cell.wall: directions.append('S')
         if e != Cell.wall: directions.append('E')
         if w != Cell.wall: directions.append('W')
+        rand_dir = () if directions == [] else random.choice(directions)
+        result[(n, s, e, w)] = rand_dir
+    return result
+
+# Returns a movement dictionary of (N, S, E, W, R):dir_to_move pairs. The
+# dir_to_move value is chosen from available directions leading to
+# robbers. R rests for the current turn.
+def make_rand_stalker_movement_table():
+    apt = [t for t in product(Cell.all_values, repeat=4)]
+    result = {}
+    for n, s, e, w in apt:
+        directions = []
+        if n == Cell.robber: directions.append('N')
+        if s == Cell.robber: directions.append('S')
+        if e == Cell.robber: directions.append('E')
+        if w == Cell.robber: directions.append('W')
         rand_dir = () if directions == [] else random.choice(directions)
         result[(n, s, e, w)] = rand_dir
     return result
@@ -232,25 +310,42 @@ def test():
     grid.set_robber((4, 4))
 
     # make 100 moves
-    for i in xrange(100):
-        grid.draw()
+    for i in xrange(5):
+        
         print 'i =', i
-
+        grid.draw()
+        print 'Robber: ', grid.robber.pos
+        print 'Cop: ', grid.cop.pos
         grid.do_robber_move()
-        print 'Robber moves %s\n' % grid.robber.last_move()
+        
+        print 'Robber moved %s\n' % grid.robber.last_move()
+        grid.draw()
+        grid.cop.observe(grid.ping_cop())
 
-    print grid.robber.log
+
+        print 'Robber: ', grid.robber.pos
+        print 'Cop: ', grid.cop.pos
+        grid.do_cop_move()
+        print 'Cop moves %s\n' % grid.cop.last_move()
+        print
+
+    grid.cop.deduce_action()
+    print 'cop observed: ', grid.cop.observations
+    print 'cop deduced: ', grid.cop.target_actions
+        
+    #print grid.robber.move_table
+    #print grid.robber.log
     # print unigrams(grid.robber.log)
     # print bigrams(grid.robber.log)
     # print trigrams(grid.robber.log)
     # print ngrams(grid.robber.log, 3)
-    print_sorted_ngrams(ngrams(grid.robber.log, 3))
+    #print_sorted_ngrams(ngrams(grid.robber.log, 3))
     print
-    print_sorted_ngrams(ngrams(grid.robber.log, 4))
+    #print_sorted_ngrams(ngrams(grid.robber.log, 4))
     print
-    print_sorted_ngrams(ngrams(grid.robber.log, 5))
+    #print_sorted_ngrams(ngrams(grid.robber.log, 5))
     print
-    print_sorted_ngrams(ngrams(grid.robber.log, 6))
+    #print_sorted_ngrams(ngrams(grid.robber.log, 6))
 
 if __name__ == '__main__':    
     test()
