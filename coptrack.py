@@ -156,7 +156,6 @@ class Grid(object):
         elif d == 'W':
             self.set_robber((r, c-1))
 
-
 # Returns a movement dictionary of (N, S, E, W):dir_to_move pairs. The
 # dir_to_move value is chosen at random from directions, and makes sure that
 # it will not move into a wall.
