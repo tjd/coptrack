@@ -1,3 +1,5 @@
+# coptrack.py
+
 from itertools import product
 import random
 
@@ -34,10 +36,6 @@ def opposite_dir(d):
         return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
     except KeyError:
         return d
-    # if d not in 'NEWS':
-    #     return d
-    # else:
-    #     return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
 
 # contents for cells
 class Cell(object):
@@ -178,39 +176,11 @@ def make_rand_movement_table():
         result[(n, s, e, w)] = rand_dir
     return result
 
-def unigrams(seq):
-    result = {}
-    for x in seq:
-        if x in result:
-            result[x] += 1
-        else:
-            result[x] = 1
-    return result
-
-def bigrams(seq):
-    result = {}
-    for i in xrange(1, len(seq)):
-        t = (seq[i-1], seq[i])
-        if t in result:
-            result[t] += 1
-        else:
-            result[t] = 1
-    return result
-
-def trigrams(seq):
-    result = {}
-    for i in xrange(2, len(seq)):
-        t = (seq[i-2], seq[i-1], seq[i])
-        if t in result:
-            result[t] += 1
-        else:
-            result[t] = 1
-    return result
-
 def ngrams(seq, n):
     result = {}
     for i in xrange(n-1, len(seq)):
-        t = tuple(seq[j] for j in xrange(i - n + 1, i + 1))
+        # t = tuple(seq[j] for j in xrange(i - n + 1, i + 1))
+        t = tuple(seq[i + 1 - n : i + 1])
         if t in result:
             result[t] += 1
         else:
@@ -240,10 +210,6 @@ def test():
         print 'Robber moves %s\n' % grid.robber.last_move()
 
     print grid.robber.log
-    # print unigrams(grid.robber.log)
-    # print bigrams(grid.robber.log)
-    # print trigrams(grid.robber.log)
-    # print ngrams(grid.robber.log, 3)
     print_sorted_ngrams(ngrams(grid.robber.log, 3))
     print
     print_sorted_ngrams(ngrams(grid.robber.log, 4))
