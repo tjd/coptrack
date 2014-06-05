@@ -368,12 +368,12 @@ def process_agent_corpus(corpus):
     print_sorted_ngrams(ngrams(corpus[0], 3))
 
 def generate_fixed_agent_model():
-    corpus = generate_fixed_order_agent_corpus(5,5, 'SNWE')
+    corpus = generate_fixed_order_agent_corpus(5,5, 'NSEW')
     
-    model_onegrams = compute_model_n(corpus, 1)
-    print 'onegram\t\tProbability'
+    model_unigrams = compute_model_n(corpus, 1)
+    print 'unigram\t\tProbability'
     print '------------------------------------'
-    for k, v in model_onegrams.iteritems():
+    for k, v in model_unigrams.iteritems():
         print k, '\t\t',v
     print
 
