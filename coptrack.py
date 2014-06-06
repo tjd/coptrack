@@ -57,6 +57,7 @@ import random, copy
 # (lower priority)
 # - allow for imperfect sensors (?)
 # - allow for agent being given a map of the world at the start (?)
+# - Implement Manhattan distance Pings and Moves (greater than 1)
 
 def opposite_dir(d):
     """
@@ -134,6 +135,8 @@ class Agent(object):
     def update(self, ping_value): pass
 
 
+
+
 class Grid(object):
     """
     Represents a 2D-map with a matrix of cells.
@@ -198,12 +201,36 @@ class Grid(object):
         grid[r][c], and grid[r][c] itself.
         """
         return {
-            'N':'wall' if r == 0                        else self.grid[r-1][c],
-            'S':'wall' if r == self.rows - 1            else self.grid[r+1][c],
-            'E':'wall' if c == self.cols - 1            else self.grid[r][c+1],
-            'W':'wall' if c == 0                        else self.grid[r][c-1],
+            'N':'W' if r == 0                        else self.grid[r-1][c],
+            'S':'W' if r == self.rows - 1            else self.grid[r+1][c],
+            'E':'W' if c == self.cols - 1            else self.grid[r][c+1],
+            'W':'W' if c == 0                        else self.grid[r][c-1],
             'C':self.grid[r][c],
         }
+
+    def fuzzy_ping(self, (r, c), errorprob):
+        """
+        Return an NSEWC tuple of the contents of the cells neighboring
+        grid[r][c], and grid[r][c] itself.
+        Returned data may be inaccurate.
+        Each returned cell has a probability of <errorprob> to be randomized.
+        Randomized cells may contain a wall or nothing.
+        """
+        # Start from a real ping.
+        fuzzyping = self.ping((r,c))
+
+        # All of the following effects only <fuzzyping>; not the real grid.
+        for cell in fuzzyping.keys():
+            # With a probability of <errorprob>: scramble the contents of a cell
+            # in <fuzzyping>.
+            if random.random() <= errorprob:
+                # Scramble the cells by replacing them with a wall or nothing.
+                # This replaces any agents which may have previously appeared
+                # in a cell.
+                fuzzyping[cell] = ['W'] if random.random() <= .5 else []
+        return fuzzyping
+
+
 
     def location_of(self, agent):
         """
@@ -262,10 +289,13 @@ class Grid(object):
             pingvalue = self.ping(agentloc)
 
             # Query the agent on its proposed next action.
-            proposedmove = agent.update(ping_value)
-
-            # Record the destination the agent would move to.
-            destination = tuple_add(agentloc, dir_to_vector(proposedmove))
+            proposedmove = agent.update(pingvalue)
+            
+            if dir_to_vector(proposedmove) != None:
+                # Record the destination the agent would move to.
+                destination = tuple_add(agentloc, dir_to_vector(proposedmove))
+            else:
+                destination = agentloc
 
             # If the requested move is physically valid:
             if self.valid_move(agent, destination):
@@ -323,10 +353,11 @@ class Grid(object):
 #     print_sorted_ngrams(ngrams(grid.robber.log, 6))
 
 def test():
+    print 'Empty Grid...\n'
     grid = Grid(5, 5)
     grid.draw()
-    print
 
+    print '\nAdding Agents...\n'
     a = Agent('a1')
     b = Agent('b1')
     grid.add_agent(a)
@@ -334,8 +365,20 @@ def test():
     grid.set_agent(a, (1,2))
     grid.set_agent(b, (4,4))
     grid.draw()
-    print 
+
+    print '\nUpdating...\n'
     grid.update()
+    grid.draw()
+
+    loc = (0,1)
+    print '\nA ping at %s' % (loc,)
+    print grid.ping(loc)
+
+    print '\nA fuzzy ping at %s' % (loc,)
+    print grid.fuzzy_ping(loc, .5)
+
+
+    print '\nThe real grid remains:\n'
     grid.draw()
 
 
