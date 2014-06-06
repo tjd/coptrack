@@ -48,18 +48,29 @@ import random, copy
 # - allow for agent being given a map of the world at the start (?)
 
 def opposite_dir(d):
+    """
+    Return the cardinal direction opposite to <d>.
+    """
     try:
         return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
     except KeyError:
         return d
 
+# TODO: Is this duplication foolish? Replace both following methods with a
+# single solution?
 def vector_to_dir(d):
+    """
+    Return the direction relating to a given unit vector.
+    """
     try:
         return {(0,0):'R', (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
     except KeyError:
         return d
 
 def dir_to_vector(d):
+    """
+    Return the unit vector relating to a given direction.
+    """
     try:
         return {'R':(0,0), 'N':(-1,0), 'S':(1,0), 'E':(0,1), 'W':(0,-1)}[d]
     except KeyError:
@@ -92,6 +103,7 @@ class Agent(object):
         # end
         self.log = ['start']
 
+
     def __repr__(self):
         """
         Alter the string returned when this class is printed.
@@ -112,6 +124,12 @@ class Agent(object):
 
 
 class Grid(object):
+    """
+    Represents a 2D-map with a matrix of cells.
+    Each cell can contain multiple objects.
+    Agents can traverse adjacent cells.
+    Agents cannot enter cells which contain a wall.
+    """
     def __init__(self, r, c):
         self.rows, self.cols = r, c
         self.grid = []
@@ -133,7 +151,7 @@ class Grid(object):
 
     def remove_agent(self, agent):
         """
-        Remove <agent> from the the grid.
+        Remove <agent> from all cells in the grid.
         Does not affect other cell contents.
         """
         for row in self.grid:
@@ -142,6 +160,9 @@ class Grid(object):
                     cell.remove(agent)
 
     def set_empty(self, (r, c)):
+        """
+        Removes all of cell (r,c)'s contents.
+        """
         self.grid[r][c] = []
 
     def set_agent(self, agent, (r, c)):
@@ -151,11 +172,17 @@ class Grid(object):
         self.grid[r][c].append(agent)
 
     def add_agent(self, agent):
+        """
+        Add an agent to the list of agents managed by this grid.
+        Does not add the agent to a cell.
+        """
         self.agents.append(agent)
 
-    # Return an NSEWC tuple of the contents of the cells neighboring
-    # grid[r][c], and grid[r][c] itself.
     def ping(self, (r, c)):
+        """
+        Return an NSEWC tuple of the contents of the cells neighboring
+        grid[r][c], and grid[r][c] itself.
+        """
         return {
             'N':'wall' if r == 0                        else self.grid[r-1][c],
             'S':'wall' if r == self.rows - 1            else self.grid[r+1][c],
@@ -164,8 +191,12 @@ class Grid(object):
             'C':self.grid[r][c],
         }
 
-    # Return the X,Y coordinate of the agent's current cell on the grid.
     def location_of(self, agent):
+        """
+        Return the X,Y coordinate of <agent>'s current cell on the grid.
+        """
+        # Iterate through the cells in each row and return the first cell
+        # containing <agent>
         for row in self.grid:
             for cell in row:
                 if agent in cell:
@@ -173,7 +204,7 @@ class Grid(object):
 
     def valid_move(self, agent, (r, c)):
         """
-        Is the proposed move possible for <agent>?
+        Is the proposed destination (r,c) possible for <agent> to enter?
         Returns false if (r,c) is a cell with a wall.
         Returns false if (r,c) is outside the grid.
         """
@@ -191,40 +222,48 @@ class Grid(object):
 
     def move_agent(self, agent, direction, destination):
         """
-        Move the agent from the its current cell to the cell at <destination>
-        by updating the references in those cells.
+        Move the agent from the its current cell to the cell at <destination>.
         Record the move in the agent's log.
         """
-        # Remove the agent from the old cell.
+        # Remove the agent from all cells containing a reference to it.
         self.remove_agent(agent)
         # Add the agent to the destination cell.
         self.set_agent(agent, destination)
         # Record the direction moved in the agent's log.
+        # TODO: The agent might move from (0,0) to (1,0) (a Southward move) 
+        #       while the passed direction is 'N'.
         agent.log.append(direction)
 
     def update(self):
+        """
+        Update each agent and perform the returned action if it is valid.
+        """
         # TODO: Is shallow copy enough?
         buffered_grid = copy.copy(self.grid)
         # all changes below are to the buffered_grid
         for agent in self.agents:
             agentloc = self.location_of(agent)
+            # Ping the location of the agent to discover the contents
+            # of surrounding cells.
             pingvalue = self.ping(agentloc)
+
             # Query the agent on its proposed next action.
             proposedmove = agent.update(ping_value)
-            # Record the destination the agent would move to.
 
-            #print 'location: ', agentloc
-            #print 'dir_to_vector: ', dir_to_vector(proposedmove)
+            # Record the destination the agent would move to.
             destination = tuple_add(agentloc, dir_to_vector(proposedmove))
-            #print agentdestination
+
             # If the requested move is physically valid:
             if self.valid_move(agent, destination):
                 self.move_agent(agent, proposedmove, destination)
+            # don't do the invalid move (i.e. stay in same cell?):
             else:
-                # don't do the move (i.e. stay in same cell?)
                 print 'Agent %s attempted illegal move %s to %s.' % (agent.name, 
                 agentloc, destination)
-                
+                # Ensure the agent's log is updated...
+                # TODO: Consider: handle this differently eg: agent damaged etc.
+                self.move_agent(agent, 'R', agentloc)
+        # Apply the updated by replacing the current grid with the buffer.
         self.grid = buffered_grid
 
 # def ngrams(seq, n):
