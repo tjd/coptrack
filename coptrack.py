@@ -1,7 +1,7 @@
 # coptrack.py
 
 from itertools import product
-import random
+import random, copy
 
 #
 # A cop C and robber R move around a graph. They start at random cells (?) and
@@ -33,26 +33,40 @@ import random
 
 #
 # TODO (roughly in order of priority):
-# - allow cells to contain multiple objects
-# - moves should be simultaneous (as in economic game theory)
-# - 'pass' is a legal move, i.e. not moving at all
-# - Grid stores a list of agents each with an "update" function that 
+# X allow cells to contain multiple objects
+# X moves should be simultaneous (as in economic game theory)
+# X 'pass' is a legal move, i.e. not moving at all
+# X Grid stores a list of agents each with an "update" function that 
 #   it calls on each "turn"/"frame" of the simulation
-# - Grid keeps track of the locations of all the agents; the agents
+# X Grid keeps track of the locations of all the agents; the agents
 #   themselves don't necessarily know where they are
-# - sensor readings should include what's in the current cell 
+# X sensor readings should include what's in the current cell 
 # - above description in comments of the problem needs to be changed
 #
 # (lower priority)
 # - allow for imperfect sensors (?)
 # - allow for agent being given a map of the world at the start (?)
 
-
 def opposite_dir(d):
     try:
         return {'N':'S', 'S':'N', 'W':'E', 'E':'W'}[d]
     except KeyError:
         return d
+
+def vector_to_dir(d):
+    try:
+        return {(0,0):'R', (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
+    except KeyError:
+        return d
+
+def dir_to_vector(d):
+    try:
+        return {'R':(0,0), 'N':(-1,0), 'S':(1,0), 'E':(0,1), 'W':(0,-1)}[d]
+    except KeyError:
+        return d
+
+def tuple_add(a, b):
+    return tuple(map(sum,zip(a,b)))
 
 # enumerated type for the contents of cells
 class Cell_type(object):
@@ -78,6 +92,13 @@ class Agent(object):
         # end
         self.log = ['start']
 
+    def __repr__(self):
+        """
+        Alter the string returned when this class is printed.
+        Returns the Agent's <name> instead of default behavior..
+        """
+        return self.name
+
     def last_move(self): return self.log[-1]
 
     # Abstract function to be implemented by the inheriting agent. The input
@@ -93,10 +114,13 @@ class Agent(object):
 class Grid(object):
     def __init__(self, r, c):
         self.rows, self.cols = r, c
-
+        self.grid = []
         # internal representation of the grid used to track all agents and
         # objects in the world
-        self.grid = [self.cols * [[]] for i in xrange(self.rows)]
+        for i in xrange(self.rows):
+            self.grid.append([])
+            for j in xrange(self.cols):
+                self.grid[i].append([])
         
         # list of agents on this grid
         self.agents = []
@@ -104,85 +128,104 @@ class Grid(object):
     def draw(self):
         for row in self.grid:
             for c in row:
-                print c,
+                print c, '\t',
             print
 
-    # Return an NSEWC tuple of the contents of the cells neighboring
-    # grid[r][c], and grid[r][c] itself.
-    def ping(self, (r, c)):
-        return {
-          'N':self.grid[r-1][c],
-          'S':self.grid[r+1][c],
-          'E':self.grid[r][c+1],
-          'W':self.grid[r][c-1],
-          'C':self.grid[r][c],
-        }
-
-    # # Return an NSEW tuple of the contents of the cells neighboring
-    # # grid[r][c].
-    # def ping(self, (r, c)):
-    #     return {
-    #       'N':Cell_type.wall if r == 0                     else self.grid[r-1][c],
-    #       'S':Cell_type.wall if r == len(self.grid) - 1    else self.grid[r+1][c],
-    #       'E':Cell_type.wall if c == len(self.grid[0]) - 1 else self.grid[r][c+1],
-    #       'W':Cell_type.wall if c == 0                     else self.grid[r][c-1],
-    #     }
-
+    def remove_agent(self, agent):
+        """
+        Remove <agent> from the the grid.
+        Does not affect other cell contents.
+        """
+        for row in self.grid:
+            for cell in row:
+                if agent in cell:
+                    cell.remove(agent)
 
     def set_empty(self, (r, c)):
         self.grid[r][c] = []
 
     def set_agent(self, agent, (r, c)):
-        self.agents.append(agent)
+        """
+        Add <agent> to the grid cell at (r,c).
+        """
         self.grid[r][c].append(agent)
 
+    def add_agent(self, agent):
+        self.agents.append(agent)
+
+    # Return an NSEWC tuple of the contents of the cells neighboring
+    # grid[r][c], and grid[r][c] itself.
+    def ping(self, (r, c)):
+        return {
+            'N':'wall' if r == 0                        else self.grid[r-1][c],
+            'S':'wall' if r == self.rows - 1            else self.grid[r+1][c],
+            'E':'wall' if c == self.cols - 1            else self.grid[r][c+1],
+            'W':'wall' if c == 0                        else self.grid[r][c-1],
+            'C':self.grid[r][c],
+        }
+
+    # Return the X,Y coordinate of the agent's current cell on the grid.
+    def location_of(self, agent):
+        for row in self.grid:
+            for cell in row:
+                if agent in cell:
+                    return self.grid.index(row), row.index(cell)
+
+    def valid_move(self, agent, (r, c)):
+        """
+        Is the proposed move possible for <agent>?
+        Returns false if (r,c) is a cell with a wall.
+        Returns false if (r,c) is outside the grid.
+        """
+        validmove = True
+
+        # If the move lands outside the grid boundary it is false.
+        if r >= self.rows or c >= self.cols:
+            validmove = False
+        else:
+            # If the move lands in a cell containing a wall it is false.
+            if 'w' in self.grid[r][c]:
+                validmove = False
+
+        return validmove
+
+    def move_agent(self, agent, direction, destination):
+        """
+        Move the agent from the its current cell to the cell at <destination>
+        by updating the references in those cells.
+        Record the move in the agent's log.
+        """
+        # Remove the agent from the old cell.
+        self.remove_agent(agent)
+        # Add the agent to the destination cell.
+        self.set_agent(agent, destination)
+        # Record the direction moved in the agent's log.
+        agent.log.append(direction)
+
     def update(self):
-        buffered_grid = copy_of(self.grid)
+        # TODO: Is shallow copy enough?
+        buffered_grid = copy.copy(self.grid)
         # all changes below are to the buffered_grid
         for agent in self.agents:
-            ping_value = ping(location_of(agent))
-            proposed_moved = agent.update(ping_value)
-            if physically_legal(proposed_move):
-                # do the move:
-                # remove agent from current location
-                # move it to new location
+            agentloc = self.location_of(agent)
+            pingvalue = self.ping(agentloc)
+            # Query the agent on its proposed next action.
+            proposedmove = agent.update(ping_value)
+            # Record the destination the agent would move to.
+
+            #print 'location: ', agentloc
+            #print 'dir_to_vector: ', dir_to_vector(proposedmove)
+            destination = tuple_add(agentloc, dir_to_vector(proposedmove))
+            #print agentdestination
+            # If the requested move is physically valid:
+            if self.valid_move(agent, destination):
+                self.move_agent(agent, proposedmove, destination)
             else:
                 # don't do the move (i.e. stay in same cell?)
+                print 'Agent %s attempted illegal move %s to %s.' % (agent.name, 
+                agentloc, destination)
                 
-        grid = buffered_grid
-
-
-    # # d is the direction to move: N, S, E, or W
-    # def move_cop(self, d):
-    #     r, c = self.cop.pos
-    #     self.cop.log.append(d)
-    #     self.grid[r][c] = Cell_type.empty
-    #     if d == 'N':
-    #         self.set_cop((r-1, c))
-    #     elif d == 'S':
-    #         self.set_cop((r+1, c))
-    #     elif d == 'E':
-    #         self.set_cop((r, c+1))
-    #     elif d == 'W':
-    #         self.set_cop((r, c-1))
-
-    # # d is the direction to move: N, S, E, or W
-    # def move_robber(self, d):
-    #     r, c = self.robber.pos
-    #     print 'd', d
-    #     print '%s, %s' % (r, c)
-    #     self.robber.log.append(d)
-    #     self.grid[r][c] = Cell_type.empty
-    #     if d == 'N':
-    #         self.set_robber((r-1, c))
-    #     elif d == 'S':
-    #         self.set_robber((r+1, c))
-    #     elif d == 'E':
-    #         self.set_robber((r, c+1))
-    #     elif d == 'W':
-    #         self.set_robber((r, c-1))
-
-
+        self.grid = buffered_grid
 
 # def ngrams(seq, n):
 #     result = {}
@@ -229,6 +272,19 @@ class Grid(object):
 def test():
     grid = Grid(5, 5)
     grid.draw()
+    print
+
+    a = Agent('a1')
+    b = Agent('b1')
+    grid.add_agent(a)
+    grid.add_agent(b)
+    grid.set_agent(a, (1,2))
+    grid.set_agent(b, (4,4))
+    grid.draw()
+    print 
+    grid.update()
+    grid.draw()
+
 
 if __name__ == '__main__':    
     test()
