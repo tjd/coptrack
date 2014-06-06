@@ -7,11 +7,22 @@ import random, copy
 # A cop C and robber R move around a graph. They start at random cells (?) and
 # then alternate taking turns, with R moving first (or C?).
 #
-# In the case with only one C and one R, both C and R are limited to knowing
-# the contents of their current cell (i.e. the one they are on), and the 4
-# orthogonally adjacent cells (north, south, east, and west). They cannot
-# "see" past these cells, although they can, of course, store the results of
-# any of their sensing actions.
+# A cell may contain any number of agents or a cell may contain a single wall.
+#
+# Let any cop, robber or similar AI entity be an 'agent'.
+#
+# Agents cannot enter or cross over a cell containing a wall. However, any
+# number of agents may simultaneously occupy, enter, exit or cross a cell which
+# does not contain a wall.
+#
+# Agents may be given a map before the start of the first turn. The map may 
+# accurately represent the graph which the agent is on, or it may be incorrect.
+#
+# Agents are limited to sensing the contents of their current cell (i.e. the one
+# they are on), and the contents of any cell within a Manhattan distance of x 
+# (where x depends upon the particular agent) from their current cell. They
+# cannot "see" past these cells, although they can, of course, store the results 
+# of any of their sensing actions.
 #
 # The things that can be sensed are an empty cell, a wall (i.e a non-empty
 # cell), a robber, and a cop.
@@ -41,7 +52,7 @@ import random, copy
 # X Grid keeps track of the locations of all the agents; the agents
 #   themselves don't necessarily know where they are
 # X sensor readings should include what's in the current cell 
-# - above description in comments of the problem needs to be changed
+# X above description in comments of the problem needs to be changed
 #
 # (lower priority)
 # - allow for imperfect sensors (?)
@@ -63,7 +74,7 @@ def vector_to_dir(d):
     Return the direction relating to a given unit vector.
     """
     try:
-        return {(0,0):'R', (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
+        return {(0,0):'P', (-1,0):'N', (1,0):'S', (0,1):'E', (0,-1):'W'}[d]
     except KeyError:
         return d
 
@@ -72,7 +83,7 @@ def dir_to_vector(d):
     Return the unit vector relating to a given direction.
     """
     try:
-        return {'R':(0,0), 'N':(-1,0), 'S':(1,0), 'E':(0,1), 'W':(0,-1)}[d]
+        return {'P':(0,0), 'N':(-1,0), 'S':(1,0), 'E':(0,1), 'W':(0,-1)}[d]
     except KeyError:
         return d
 
@@ -169,6 +180,9 @@ class Grid(object):
         """
         Add <agent> to the grid cell at (r,c).
         """
+        # Ensure the agent is not duplicated on the grid by removing all
+        # other instances.
+        self.remove_agent(agent)
         self.grid[r][c].append(agent)
 
     def add_agent(self, agent):
