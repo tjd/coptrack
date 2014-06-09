@@ -55,7 +55,7 @@ import random, copy
 # X above description in comments of the problem needs to be changed
 #
 # (lower priority)
-# - allow for imperfect sensors (?)
+# X allow for imperfect sensors (?)
 # - allow for agent being given a map of the world at the start (?)
 # - Implement Manhattan distance Pings and Moves (greater than 1)
 
@@ -133,8 +133,6 @@ class Agent(object):
     # decide to move into a wall, but the Grid will have to (somehow) disallow
     # that.
     def update(self, ping_value): pass
-
-
 
 
 class Grid(object):
@@ -229,8 +227,6 @@ class Grid(object):
                 # in a cell.
                 fuzzyping[cell] = ['W'] if random.random() <= .5 else []
         return fuzzyping
-
-
 
     def location_of(self, agent):
         """
