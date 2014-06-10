@@ -392,10 +392,6 @@ class Map(object):
                 # TODO: Consider: handle this differently eg: agent damaged etc.
                 self.move_agent(self.buffergrid, agent, 'C', agentloc)
 
-        print 'Actual grid: '
-        self.draw(self.grid)
-        print 'Buffered grid: '
-        self.draw(self.buffergrid)
         # Apply the updated by replacing the current grid with the buffer.
         self.grid = copy.copy(self.buffergrid)
 
@@ -484,10 +480,10 @@ def simulate():
     world.draw(world.grid)
 
 
-    for i in xrange(9):
+    for i in xrange(100):
         print '\nUpdating... %s\n' % (i)
         world.update()
-        print 'update finished: '
+        print 'Update finished: '
         world.draw(world.grid)
 
 
